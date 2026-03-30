@@ -1,0 +1,88 @@
+services:
+  api-server:
+    build:
+      context: .
+      dockerfile: backend/api-server/Dockerfile
+    container_name: smart-monitor-api-server
+    env_file:
+      - .env
+    environment:
+      API_SERVER_PORT: ${API_SERVER_PORT:-5001}
+      MONITORING_SERVICE_PORT: ${MONITORING_SERVICE_PORT:-5002}
+      ALERT_SERVICE_PORT: ${ALERT_SERVICE_PORT:-5003}
+      MONITORING_SERVICE_URL: ${MONITORING_SERVICE_URL:-http://monitoring-service:5002}
+      ALERT_SERVICE_URL: ${ALERT_SERVICE_URL:-http://alert-service:5003}
+      NODE_ENV: ${NODE_ENV:-development}
+    ports:
+      - "${API_SERVER_PORT:-5001}:5001"
+    depends_on:
+      monitoring-service:
+        condition: service_started
+      alert-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  monitoring-service:
+    build:
+      context: .
+      dockerfile: backend/monitoring-service/Dockerfile
+    container_name: smart-monitor-monitoring-service
+    env_file:
+      - .env
+    environment:
+      MONITORING_SERVICE_PORT: ${MONITORING_SERVICE_PORT:-5002}
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_HOST: ${DATABASE_HOST:-smart-monitor-db}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DATABASE_NAME: ${DATABASE_NAME:-smart_monitor}
+      DATABASE_USER: ${DATABASE_USER:-smart_monitor}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-smart_monitor}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
+    ports:
+      - "${MONITORING_SERVICE_PORT:-5002}:5002"
+
+  alert-service:
+    build:
+      context: .
+      dockerfile: backend/alert-service/Dockerfile
+    container_name: smart-monitor-alert-service
+    env_file:
+      - .env
+    environment:
+      ALERT_SERVICE_PORT: ${ALERT_SERVICE_PORT:-5003}
+      NODE_ENV: ${NODE_ENV:-development}
+      DATABASE_HOST: ${DATABASE_HOST:-smart-monitor-db}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DATABASE_NAME: ${DATABASE_NAME:-smart_monitor}
+      DATABASE_USER: ${DATABASE_USER:-smart_monitor}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-smart_monitor}
+      DATABASE_SSL: ${DATABASE_SSL:-false}
+    ports:
+      - "${ALERT_SERVICE_PORT:-5003}:5003"
+
+  database:
+    image: postgres:16-alpine
+    container_name: smart-monitor-db
+    profiles:
+      - database
+    environment:
+      POSTGRES_DB: ${DATABASE_NAME:-smart_monitor}
+      POSTGRES_USER: ${DATABASE_USER:-smart_monitor}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-smart_monitor}
+    ports:
+      - "${DATABASE_PORT:-5432}:5432"
+    volumes:
+      - smart_monitor_db_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-smart_monitor} -d ${DATABASE_NAME:-smart_monitor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  smart_monitor_db_data:

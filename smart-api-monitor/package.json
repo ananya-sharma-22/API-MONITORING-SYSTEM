@@ -1,0 +1,14 @@
+{
+  "name": "smart-api-monitor",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "pg": "^8.13.3"
+  },
+  "scripts": {
+    "start:api-server": "node backend/api-server/server.js",
+    "start:monitoring-service": "node backend/monitoring-service/server.js",
+    "start:alert-service": "node backend/alert-service/server.js",
+    "start:backend": "node scripts/start-backend.js"
+  }
+}
