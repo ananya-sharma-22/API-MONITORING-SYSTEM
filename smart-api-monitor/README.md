@@ -136,7 +136,7 @@ npm start
 
 ## 👨‍💻 Author
 
-Your Name
+Ananya Sharma
 
 ---
 
